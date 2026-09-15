@@ -1,0 +1,54 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: yuna_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d yuna_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:test-only@127.0.0.1:5432/yuna_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --ignore-scripts
+          else
+            echo "::warning::Bootstrap has no reviewed lockfile yet. Commit the generated package-lock.json before production."
+            npm install --ignore-scripts
+          fi
+      - run: npm run check
+      - run: npm run test:sdk
+      - run: npm run test:integration
+      - name: Dependency security report
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build container
+        run: docker build -t yuna-chan:ci .
+      - name: Export lockfile for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-lockfile
+          path: package-lock.json
+          if-no-files-found: warn

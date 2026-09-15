@@ -1,0 +1,36 @@
+{
+  "name": "yuna-chan",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "description": "Private-community Discord bot foundation. No community feature modules yet.",
+  "engines": {
+    "node": ">=24.17.0 <25"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch src/main.ts",
+    "start": "node --env-file-if-exists=.env --enable-source-maps dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node --test tests/unit/*.test.ts",
+    "test:integration": "node --env-file-if-exists=.env --test tests/integration/*.test.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck && npm test && npm run build",
+    "db:migrate": "node --env-file-if-exists=.env src/scripts/migrate.ts",
+    "commands:deploy": "node --env-file-if-exists=.env src/scripts/deploy-commands.ts",
+    "test:sdk": "node --test tests/sdk/*.test.ts"
+  },
+  "dependencies": {
+    "discord.js": "14.27.0",
+    "drizzle-orm": "0.45.1",
+    "pg": "8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/pg": "8.15.5",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3"
+  }
+}

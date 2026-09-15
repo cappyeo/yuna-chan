@@ -1,0 +1,66 @@
+name: yuna-chan
+x-app: &app
+  image: yuna-chan:local
+  build: .
+  environment:
+    NODE_ENV: production
+    DISCORD_TOKEN: ${DISCORD_TOKEN:?Set DISCORD_TOKEN}
+    DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID:?Set DISCORD_APPLICATION_ID}
+    DISCORD_GUILD_IDS: ${DISCORD_GUILD_IDS:?Set DISCORD_GUILD_IDS}
+    DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
+    AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-90}
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+    HEALTH_PORT: ${HEALTH_PORT:-3000}
+    DATABASE_URL: postgresql://yuna:${APP_DATABASE_PASSWORD:?Set APP_DATABASE_PASSWORD}@db:5432/yuna
+    HEALTH_HOST: 0.0.0.0
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+services:
+  db:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: yuna
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:?Set APP_DATABASE_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./ops/init-db.sh:/docker-entrypoint-initdb.d/10-app-user.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d yuna"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+  migrate:
+    <<: *app
+    command: [node, dist/scripts/migrate.js]
+    restart: "no"
+    profiles: [tools]
+    depends_on:
+      db: { condition: service_healthy }
+  commands:
+    <<: *app
+    command: [node, dist/scripts/deploy-commands.js]
+    restart: "no"
+    profiles: [tools]
+    depends_on:
+      db: { condition: service_healthy }
+  bot:
+    <<: *app
+    restart: unless-stopped
+    stop_grace_period: 20s
+    depends_on:
+      db: { condition: service_healthy }
+    # No public HTTP port and no database port in the production configuration.
+volumes:
+  postgres-data:
