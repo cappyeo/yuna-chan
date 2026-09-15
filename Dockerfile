@@ -1,8 +1,7 @@
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
-COPY package*.json ./
-# Initial bootstrap can generate a lock; after review, commit it and use npm ci only.
-RUN if [ -f package-lock.json ]; then npm ci --ignore-scripts; else npm install --ignore-scripts; fi
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
 COPY tsconfig*.json ./
 COPY src ./src
 RUN npm run build

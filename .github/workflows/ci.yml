@@ -26,18 +26,14 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql://postgres:test-only@127.0.0.1:5432/yuna_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
-      - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci --ignore-scripts
-          else
-            echo "::warning::Bootstrap has no reviewed lockfile yet. Commit the generated package-lock.json before production."
-            npm install --ignore-scripts
-          fi
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm run test:sdk
       - run: npm run test:integration
@@ -45,9 +41,9 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Build container
         run: docker build -t yuna-chan:ci .
-      - name: Export lockfile for review
+      - name: Export resolved dependency lock
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: npm-lockfile
           path: package-lock.json
